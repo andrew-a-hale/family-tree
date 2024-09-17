@@ -23,18 +23,8 @@ type (
 	GenerationType int
 )
 
-func (s Sex) String() string {
-	switch s {
-	case 0:
-		return "MALE"
-	case 1:
-		return "FEMALE"
-	default:
-		return "UNKNOWN"
-	}
-}
-
 const (
+	GENERATIONS       = 10
 	NAME_COUNT        = 200
 	FAMILY_COUNT      = 100
 	SEED              = 0.2
@@ -59,12 +49,13 @@ type Family struct {
 }
 
 type Person struct {
-	Mother *Person
-	Father *Person
-	Id     string
-	Name   string
-	Family Family
-	Sex    Sex
+	Mother     *Person
+	Father     *Person
+	Generation *Generation
+	Id         string
+	Name       string
+	Family     Family
+	Sex        Sex
 }
 type People []Person
 
@@ -78,10 +69,15 @@ func (people *People) Get(id string) Person {
 	return Person{}
 }
 
-func (people *People) Shuffle() People {
-	var x People
-	copy(*people, x)
-	return x
+func (s Sex) String() string {
+	switch s {
+	case 0:
+		return "MALE"
+	case 1:
+		return "FEMALE"
+	default:
+		return "UNKNOWN"
+	}
 }
 
 type Couple struct {
@@ -182,12 +178,12 @@ func GenerateFirstName(s Sex) string {
 	return names[idx].Value
 }
 
-func GenerateFamily() Family {
+func GenerateFamily(g *Generation) Family {
 	idx := rand.Intn(FAMILY_COUNT)
-	return Family{uuid.NewString(), families[idx].Name, 1}
+	return Family{uuid.NewString(), families[idx].Name, g.Id}
 }
 
-func GenerateLambda(g Generation) int {
+func GenerateLambda(g *Generation) int {
 	l := 0
 	switch g.Type {
 	case DECLINE:
@@ -201,14 +197,15 @@ func GenerateLambda(g Generation) int {
 	return l
 }
 
-func create_adam() Person {
+func create_adam(g Generation) Person {
 	father := Person{}
 	mother := Person{}
-	family := GenerateFamily()
+	family := GenerateFamily(&g)
 
 	return Person{
 		&mother,
 		&father,
+		&g,
 		uuid.NewString(),
 		GenerateFirstName(MALE),
 		family,
@@ -216,14 +213,15 @@ func create_adam() Person {
 	}
 }
 
-func create_eve() Person {
+func create_eve(g Generation) Person {
 	father := Person{}
 	mother := Person{}
-	family := GenerateFamily()
+	family := GenerateFamily(&g)
 
 	return Person{
 		&mother,
 		&father,
+		&g,
 		uuid.NewString(),
 		GenerateFirstName(FEMALE),
 		family,
@@ -244,7 +242,7 @@ func generatePoissonRV(lambda int) int {
 	return n
 }
 
-func generateChildren(c Couple) People {
+func generateChildren(g *Generation, c Couple) People {
 	var children People
 
 	n := generatePoissonRV(c.Lambda)
@@ -253,6 +251,7 @@ func generateChildren(c Couple) People {
 		child := Person{
 			c.Mother,
 			c.Father,
+			g,
 			uuid.NewString(),
 			GenerateFirstName(sex),
 			c.Family,
@@ -285,14 +284,14 @@ func simulate(gen Generation, males People, females People, everybody *People) (
 			&females[i],
 			&males[i],
 			males[i].Family,
-			GenerateLambda(gen),
+			GenerateLambda(&gen),
 		}
 		couples = append(couples, couple)
 	}
 
 	var m, f People
 	for _, c := range couples {
-		children := generateChildren(c)
+		children := generateChildren(&gen, c)
 		for _, child := range children {
 			*everybody = append(*everybody, child)
 			switch child.Sex {
@@ -312,17 +311,16 @@ func main() {
 	read_last_names()
 
 	generation := Generation{SEED, GROWTH, GROWTH, 0}
-	adam := create_adam()
-	eve := create_eve()
+	adam := create_adam(generation)
+	eve := create_eve(generation)
 
 	history := History{generation}
 	males := People{adam}
 	females := People{eve}
 	everybody := People{adam, eve}
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < GENERATIONS; i++ {
 		generation.Id += 1
-		fmt.Println(generation)
 		males, females = simulate(generation, males, females, &everybody)
 
 		var comp float64
@@ -380,9 +378,9 @@ func main() {
 	defer people.Close()
 
 	buf := bufio.NewWriter(people)
-	fmt.Fprintf(buf, ":ID,name:STRING,sex:STRING,motherId:STRING,fatherId:STRING,familyId:STRING\n")
+	fmt.Fprintf(buf, "personId:ID,name:STRING,sex:STRING,motherId:STRING,fatherId:STRING,familyId:STRING,:LABEL\n")
 	for _, p := range everybody {
-		fmt.Fprintf(buf, "%s,%s,%s,%s,%s,%s\n", p.Id, p.Name, p.Sex, p.Mother.Id, p.Father.Id, p.Family.Id)
+		fmt.Fprintf(buf, "%s,%s,%s,%s,%s,%s,%s\n", p.Id, p.Name, p.Sex, p.Mother.Id, p.Father.Id, p.Family.Id, "Person")
 		buf.Flush()
 	}
 
@@ -395,9 +393,9 @@ func main() {
 	defer generations.Close()
 
 	buf = bufio.NewWriter(generations)
-	fmt.Fprintf(buf, ":ID,Type:STRING,Direction:STRING,competitionFactor:FLOAT\n")
+	fmt.Fprintf(buf, "generationId:ID,Type:STRING,Direction:STRING,competitionFactor:FLOAT,:LABEL\n")
 	for _, g := range history {
-		fmt.Fprintf(buf, "%d,%s,%s,%f\n", g.Id, g.Type, g.Direction, g.Competition)
+		fmt.Fprintf(buf, "%d,%s,%s,%f,%s\n", g.Id, g.Type, g.Direction, g.Competition, "Generation")
 		buf.Flush()
 	}
 
@@ -423,7 +421,7 @@ func main() {
 			fmt.Fprintf(buf, "%s,%s,%s\n", p.Id, p.Mother.Id, "PARENT")
 			fmt.Fprintf(buf, "%s,%s,%s\n", p.Mother.Id, p.Id, "CHILD")
 		}
-		fmt.Fprintf(buf, "%s,%d,%s\n", p.Id, p.Family.Generation, "IN_GENERATION")
+		fmt.Fprintf(buf, "%s,%d,%s\n", p.Id, p.Generation.Id, "IN_GENERATION")
 		buf.Flush()
 	}
 }
