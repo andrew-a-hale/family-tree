@@ -43,31 +43,21 @@ const (
 )
 
 type Family struct {
-	Id         string
-	Name       string
-	Generation int
+	id         string
+	name       string
+	generation int
 }
 
 type Person struct {
-	Mother     *Person
-	Father     *Person
-	Generation *Generation
-	Id         string
-	Name       string
-	Family     Family
-	Sex        Sex
+	mother     *Person
+	father     *Person
+	generation *Generation
+	id         string
+	name       string
+	family     Family
+	sex        Sex
 }
 type People []Person
-
-func (people *People) Get(id string) Person {
-	for _, p := range *people {
-		if p.Id == id {
-			return p
-		}
-	}
-
-	return Person{}
-}
 
 func (s Sex) String() string {
 	switch s {
@@ -81,18 +71,18 @@ func (s Sex) String() string {
 }
 
 type Couple struct {
-	Mother *Person
-	Father *Person
-	Family Family
-	Lambda int
+	mother *Person
+	father *Person
+	family Family
+	lambda int
 }
 type Couples []Couple
 
 type Generation struct {
-	Competition float64
-	Type        GenerationType
-	Direction   GenerationType
-	Id          int
+	competition float64
+	genType     GenerationType
+	direction   GenerationType
+	id          int
 }
 
 func (gt GenerationType) String() string {
@@ -111,11 +101,11 @@ func (gt GenerationType) String() string {
 type History []Generation
 
 type Name struct {
-	Value string
-	Sex   Sex
+	value string
+	sex   Sex
 }
 
-func read_first_names() {
+func readFirstNames() {
 	file, err := os.Open("first_names.csv")
 	if err != nil {
 		fmt.Printf("failed to open first_names.csv: %v\n", err)
@@ -148,7 +138,7 @@ func read_first_names() {
 	}
 }
 
-func read_last_names() {
+func readLastNames() {
 	file, err := os.Open("last_names.csv")
 	if err != nil {
 		fmt.Printf("failed to open last_names.csv: %v\n", err)
@@ -170,22 +160,22 @@ func read_last_names() {
 	}
 }
 
-func GenerateFirstName(s Sex) string {
+func generateFirstName(s Sex) string {
 	idx := rand.Intn(NAME_COUNT)
 	if s == FEMALE {
 		idx += NAME_COUNT
 	}
-	return names[idx].Value
+	return names[idx].value
 }
 
-func GenerateFamily(g *Generation) Family {
+func generateFamily(g *Generation) Family {
 	idx := rand.Intn(FAMILY_COUNT)
-	return Family{uuid.NewString(), families[idx].Name, g.Id}
+	return Family{uuid.NewString(), families[idx].name, g.id}
 }
 
-func GenerateLambda(g *Generation) int {
+func generateLambda(g *Generation) int {
 	l := 0
-	switch g.Type {
+	switch g.genType {
 	case DECLINE:
 		l = 1
 	case STABLE:
@@ -197,33 +187,33 @@ func GenerateLambda(g *Generation) int {
 	return l
 }
 
-func create_adam(g Generation) Person {
+func createAdam(g Generation) Person {
 	father := Person{}
 	mother := Person{}
-	family := GenerateFamily(&g)
+	family := generateFamily(&g)
 
 	return Person{
 		&mother,
 		&father,
 		&g,
 		uuid.NewString(),
-		GenerateFirstName(MALE),
+		generateFirstName(MALE),
 		family,
 		MALE,
 	}
 }
 
-func create_eve(g Generation) Person {
+func createEve(g Generation) Person {
 	father := Person{}
 	mother := Person{}
-	family := GenerateFamily(&g)
+	family := generateFamily(&g)
 
 	return Person{
 		&mother,
 		&father,
 		&g,
 		uuid.NewString(),
-		GenerateFirstName(FEMALE),
+		generateFirstName(FEMALE),
 		family,
 		FEMALE,
 	}
@@ -245,16 +235,16 @@ func generatePoissonRV(lambda int) int {
 func generateChildren(g *Generation, c Couple) People {
 	var children People
 
-	n := generatePoissonRV(c.Lambda)
+	n := generatePoissonRV(c.lambda)
 	for i := 0; i < n; i++ {
 		sex := Sex(math.Round(rand.Float64()))
 		child := Person{
-			c.Mother,
-			c.Father,
+			c.mother,
+			c.father,
 			g,
 			uuid.NewString(),
-			GenerateFirstName(sex),
-			c.Family,
+			generateFirstName(sex),
+			c.family,
 			sex,
 		}
 		children = append(children, child)
@@ -283,8 +273,8 @@ func simulate(gen Generation, males People, females People, everybody *People) (
 		couple := Couple{
 			&females[i],
 			&males[i],
-			males[i].Family,
-			GenerateLambda(&gen),
+			males[i].family,
+			generateLambda(&gen),
 		}
 		couples = append(couples, couple)
 	}
@@ -294,7 +284,7 @@ func simulate(gen Generation, males People, females People, everybody *People) (
 		children := generateChildren(&gen, c)
 		for _, child := range children {
 			*everybody = append(*everybody, child)
-			switch child.Sex {
+			switch child.sex {
 			case MALE:
 				m = append(m, child)
 			case FEMALE:
@@ -306,65 +296,33 @@ func simulate(gen Generation, males People, females People, everybody *People) (
 	return m, f
 }
 
-func main() {
-	read_first_names()
-	read_last_names()
+func incrementGeneration(g *Generation) Generation {
+	var comp float64
+	var dir GenerationType
+	var genType GenerationType
 
-	generation := Generation{SEED, GROWTH, GROWTH, 0}
-	adam := create_adam(generation)
-	eve := create_eve(generation)
-
-	history := History{generation}
-	males := People{adam}
-	females := People{eve}
-	everybody := People{adam, eve}
-
-	for i := 0; i < GENERATIONS; i++ {
-		generation.Id += 1
-		males, females = simulate(generation, males, females, &everybody)
-
-		var comp float64
-		var dir GenerationType
-		switch generation.Direction {
-		case DECLINE:
-			comp = math.Pow(generation.Competition, 1/COMPETITION_DELTA)
-		case GROWTH:
-			comp = math.Pow(generation.Competition, COMPETITION_DELTA)
-		}
-
-		var genType GenerationType
-		if comp > 0.6 {
-			genType = DECLINE
-			dir = GROWTH
-		} else if comp < 0.2 {
-			genType = GROWTH
-			dir = DECLINE
-		} else {
-			genType = STABLE
-			dir = generation.Direction // previous direction
-		}
-		generation = Generation{comp, genType, dir, generation.Id}
-		history = append(history, generation)
-
-		fmt.Printf(
-			"GENERATION: %d - TYPE: %s\nDir: %s - Competition Factor: %f\n",
-			generation.Id,
-			generation.Type,
-			generation.Direction,
-			generation.Competition,
-		)
-		fmt.Printf(
-			"Population: %d\nActive: %d\n\n",
-			len(everybody),
-			len(males)+len(females),
-		)
-
-		if len(males)+len(females) == 0 {
-			fmt.Println("Family has died out :(")
-			break
-		}
+	switch g.direction {
+	case DECLINE:
+		comp = math.Pow(g.competition, 1/COMPETITION_DELTA)
+	case GROWTH:
+		comp = math.Pow(g.competition, COMPETITION_DELTA)
 	}
 
+	if comp > 0.6 {
+		genType = DECLINE
+		dir = GROWTH
+	} else if comp < 0.2 {
+		genType = GROWTH
+		dir = DECLINE
+	} else {
+		genType = STABLE
+		dir = g.direction // previous direction
+	}
+
+	return Generation{comp, genType, dir, g.id + 1}
+}
+
+func export(history *History, everybody *People) {
 	os.Remove("../imports")
 	err := os.Mkdir("../imports", fs.FileMode(fs.ModeDir))
 
@@ -379,8 +337,8 @@ func main() {
 
 	buf := bufio.NewWriter(people)
 	fmt.Fprintf(buf, "personId:ID,name:STRING,sex:STRING,motherId:STRING,fatherId:STRING,familyId:STRING,:LABEL\n")
-	for _, p := range everybody {
-		fmt.Fprintf(buf, "%s,%s,%s,%s,%s,%s,%s\n", p.Id, p.Name, p.Sex, p.Mother.Id, p.Father.Id, p.Family.Id, "Person")
+	for _, p := range *everybody {
+		fmt.Fprintf(buf, "%s,%s,%s,%s,%s,%s,%s\n", p.id, p.name, p.sex, p.mother.id, p.father.id, p.family.id, "person")
 		buf.Flush()
 	}
 
@@ -394,8 +352,8 @@ func main() {
 
 	buf = bufio.NewWriter(generations)
 	fmt.Fprintf(buf, "generationId:ID,Type:STRING,Direction:STRING,competitionFactor:FLOAT,:LABEL\n")
-	for _, g := range history {
-		fmt.Fprintf(buf, "%d,%s,%s,%f,%s\n", g.Id, g.Type, g.Direction, g.Competition, "Generation")
+	for _, g := range *history {
+		fmt.Fprintf(buf, "%d,%s,%s,%f,%s\n", g.id, g.genType, g.direction, g.competition, "Generation")
 		buf.Flush()
 	}
 
@@ -410,18 +368,62 @@ func main() {
 
 	buf = bufio.NewWriter(edges)
 	fmt.Fprintf(buf, ":START_ID,:END_ID,:TYPE\n")
-	for _, p := range everybody {
-		if p.Father.Id != "" {
-			fmt.Fprintf(buf, "%s,%s,%s\n", p.Id, p.Father.Id, "FATHER")
-			fmt.Fprintf(buf, "%s,%s,%s\n", p.Id, p.Father.Id, "PARENT")
-			fmt.Fprintf(buf, "%s,%s,%s\n", p.Father.Id, p.Id, "CHILD")
+	for _, p := range *everybody {
+		if p.father.id != "" {
+			fmt.Fprintf(buf, "%s,%s,%s\n", p.id, p.father.id, "FATHER")
+			fmt.Fprintf(buf, "%s,%s,%s\n", p.id, p.father.id, "PARENT")
+			fmt.Fprintf(buf, "%s,%s,%s\n", p.father.id, p.id, "CHILD")
 		}
-		if p.Mother.Id != "" {
-			fmt.Fprintf(buf, "%s,%s,%s\n", p.Id, p.Mother.Id, "MOTHER")
-			fmt.Fprintf(buf, "%s,%s,%s\n", p.Id, p.Mother.Id, "PARENT")
-			fmt.Fprintf(buf, "%s,%s,%s\n", p.Mother.Id, p.Id, "CHILD")
+		if p.mother.id != "" {
+			fmt.Fprintf(buf, "%s,%s,%s\n", p.id, p.mother.id, "MOTHER")
+			fmt.Fprintf(buf, "%s,%s,%s\n", p.id, p.mother.id, "PARENT")
+			fmt.Fprintf(buf, "%s,%s,%s\n", p.mother.id, p.id, "CHILD")
 		}
-		fmt.Fprintf(buf, "%s,%d,%s\n", p.Id, p.Generation.Id, "IN_GENERATION")
+		fmt.Fprintf(buf, "%s,%d,%s\n", p.id, p.generation.id, "IN_GENERATION")
 		buf.Flush()
 	}
+
+	fmt.Println("done!")
+}
+
+func main() {
+	readFirstNames()
+	readLastNames()
+
+	generation := Generation{SEED, GROWTH, GROWTH, 0}
+	adam := createAdam(generation)
+	eve := createEve(generation)
+
+	history := History{generation}
+	males := People{adam}
+	females := People{eve}
+	everybody := People{adam, eve}
+
+	for i := 0; i < GENERATIONS; i++ {
+		generation = incrementGeneration(&generation)
+		history = append(history, generation)
+
+		fmt.Printf(
+			"GENERATION: %d - TYPE: %s\nDir: %s - Competition Factor: %f\n",
+			generation.id,
+			generation.genType,
+			generation.direction,
+			generation.competition,
+		)
+
+		males, females = simulate(generation, males, females, &everybody)
+		fmt.Printf(
+			"Population: %d\nActive: %d\n\n",
+			len(everybody),
+			len(males)+len(females),
+		)
+
+		if len(males)+len(females) == 0 {
+			fmt.Println("Family has died out :(")
+			break
+		}
+	}
+	fmt.Println()
+
+	export(&history, &everybody)
 }
