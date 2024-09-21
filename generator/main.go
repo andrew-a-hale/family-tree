@@ -338,7 +338,7 @@ func export(history *History, everybody *People) {
 	buf := bufio.NewWriter(people)
 	fmt.Fprintf(buf, "personId:ID,name:STRING,sex:STRING,motherId:STRING,fatherId:STRING,familyId:STRING,:LABEL\n")
 	for _, p := range *everybody {
-		fmt.Fprintf(buf, "%s,%s,%s,%s,%s,%s,%s\n", p.id, p.name, p.sex, p.mother.id, p.father.id, p.family.id, "person")
+		fmt.Fprintf(buf, "%s,%s,%s,%s,%s,%s,%s\n", p.id, p.name, p.sex, p.mother.id, p.father.id, p.family.id, "Person")
 		buf.Flush()
 	}
 
