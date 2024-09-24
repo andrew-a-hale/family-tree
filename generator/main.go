@@ -24,7 +24,7 @@ type (
 )
 
 const (
-	GENERATIONS       = 10
+	GENERATIONS       = 40
 	NAME_COUNT        = 200
 	FAMILY_COUNT      = 100
 	SEED              = 0.2
