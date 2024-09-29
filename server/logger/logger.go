@@ -8,9 +8,9 @@ import (
 )
 
 func InitLogger(filename string) (*slog.Logger, *os.File) {
-	logFile, err := os.Create(filename)
+	logFile, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		log.Fatalf("Failed to create log file %s: %v", filename, err)
+		log.Fatalf("Failed to open log file %s: %v", filename, err)
 	}
 
 	handler := slog.NewJSONHandler(

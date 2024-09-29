@@ -1,7 +1,4 @@
-{"time":"2024-09-29T19:42:52.743003079+10:00","level":"INFO","msg":"Webserver Started @ Port: 8888"}
-{"time":"2024-09-29T19:42:54.518111286+10:00","level":"INFO","msg":"Start","Method":"GET","Path":"/"}
-{"time":"2024-09-29T19:42:54.518158537+10:00","level":"INFO","msg":"Hello!","Method":"GET","Path":"/"}
-{"time":"2024-09-29T19:42:54.518186028+10:00","level":"INFO","msg":"Finish","Method":"GET","Path":"/","DurationMs":0}
-{"time":"2024-09-29T19:42:54.536707043+10:00","level":"INFO","msg":"Start","Method":"GET","Path":"/favicon.ico"}
-{"time":"2024-09-29T19:42:54.536771574+10:00","level":"INFO","msg":"Hello!","Method":"GET","Path":"/favicon.ico"}
-{"time":"2024-09-29T19:42:54.536797445+10:00","level":"INFO","msg":"Finish","Method":"GET","Path":"/favicon.ico","DurationMs":0}
+{"time":"2024-09-29T20:00:36.010267982+10:00","level":"INFO","msg":"Webserver Started @ Port: 8888"}
+{"time":"2024-09-29T20:00:37.96284034+10:00","level":"INFO","msg":"Start","Method":"GET","Path":"/data/"}
+{"time":"2024-09-29T20:00:37.962899071+10:00","level":"INFO","msg":"Hello!","Method":"GET","Path":"/data/"}
+{"time":"2024-09-29T20:00:37.962924242+10:00","level":"INFO","msg":"Finish","Method":"GET","Path":"/data/","DurationMs":0}
