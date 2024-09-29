@@ -1,4 +1,0 @@
-{"time":"2024-09-29T20:00:36.010267982+10:00","level":"INFO","msg":"Webserver Started @ Port: 8888"}
-{"time":"2024-09-29T20:00:37.96284034+10:00","level":"INFO","msg":"Start","Method":"GET","Path":"/data/"}
-{"time":"2024-09-29T20:00:37.962899071+10:00","level":"INFO","msg":"Hello!","Method":"GET","Path":"/data/"}
-{"time":"2024-09-29T20:00:37.962924242+10:00","level":"INFO","msg":"Finish","Method":"GET","Path":"/data/","DurationMs":0}
